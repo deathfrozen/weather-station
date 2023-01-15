@@ -1,0 +1,162 @@
+esphome:
+  name: weather-station
+
+external_components:
+  - source: github://pr#3625
+    components: [ gc9a01 ]
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+web_server:
+  port: 80
+
+logger:
+
+api:
+
+ota:
+
+wifi:
+  ssid: "23"
+  password: "daiinetaplz"
+
+  ap:
+    ssid: "Weather-Station Fallback Hotspot"
+
+captive_portal:
+    
+sensor:
+  - platform: template
+    name: "temp"
+    id: temp_sensor
+    unit_of_measurement: "°C"
+    lambda: |-
+      return rand() % 100;
+    update_interval: 1s
+  - platform: template
+    name: "humidity"
+    id: humidity_sensor
+    unit_of_measurement: "%"
+    lambda: |-
+      return rand() % 100;
+    update_interval: 1s
+  - platform: template
+    name: "pressure"
+    id: pressure_sensor
+    unit_of_measurement: "hPa"
+    lambda: |-
+      return rand() % 100;
+    update_interval: 1s
+  - platform: template
+    name: "light"
+    id: light_sensor
+    unit_of_measurement: "lux"
+    lambda: |-
+      return rand() % 100;
+    update_interval: 1s
+  - platform: template
+    name: "co"
+    id: co_sensor
+    unit_of_measurement: "ppm"
+    lambda: |-
+      return rand() % 100;
+    update_interval: 1s
+  - platform: template
+    name: "co2"
+    id: co2_sensor
+    unit_of_measurement: "ppm"
+    lambda: |-
+      return rand() % 100;
+    update_interval: 1s
+time:
+  - platform: homeassistant
+    id: esptime
+    timezone: "UTC-03:00"
+
+spi:
+  mosi_pin: GPIO13
+  clk_pin: GPIO14
+  
+image:
+  - file: "scale.png"
+    id: display_image
+    type: RGB24
+font:
+  - file: "gfonts://Righteous"
+    id: roboto
+    size: 18
+color:
+  - id: text_icons_gray
+    red: 0.663
+    green: 0.663
+    blue: 0.663
+  - id: black_gray
+    red: 0.1
+    green: 0.1
+    blue: 0.1
+  - id: white
+    red: 1
+    green: 1
+    blue: 1
+  - id: gray_blue
+    red: 0.7
+    green: 0.7
+    blue: 0.9
+  - id: gray
+    red: 0.7
+    green: 0.7
+    blue: 0.7
+    
+display:
+- platform: gc9a01
+  reset_pin: GPIO26
+  cs_pin: GPIO15
+  dc_pin: GPIO33
+  rotation: 90
+  update_interval: 1sec
+  lambda: |-
+      auto time = id(esptime).now();
+      if (!time.is_valid()) {
+        return;
+      }
+      double pi = 3.14159265358979323846;
+      double fullCircle = pi * 2.0;
+      double roundAngle = pi / 2.0;
+      double secondDividedTwo = 0.00872664625997164788461845384244;
+      double seconds = time.second / 60.0;
+      double minutes = time.minute / 60.0;
+      double hours = time.hour / 12.0;
+      double tempAngle = map(id(temp_sensor).state, 0.0, 100.0, 3.9269908169872415480783042290994, 5.4977871437821381673096259207391);
+      
+      int startTempX = cos(tempAngle) * 114.0 + 120.0;
+      int startTempY = sin(tempAngle) * 114.0 + 120.0;
+      int endTempX = cos(tempAngle - secondDividedTwo) * 120.0 + 120.0;
+      int endTempY = sin(tempAngle - secondDividedTwo) * 120.0 + 120.0;
+      int endTemp1X = cos(tempAngle + secondDividedTwo) * 120.0 + 120.0;
+      int endTemp1Y = sin(tempAngle + secondDividedTwo) * 120.0 + 120.0;
+      
+      int startSecondsX = cos((seconds * fullCircle) - roundAngle) * 78.0 + 120.0;
+      int startSecondsY = sin((seconds * fullCircle) - roundAngle) * 78.0 + 120.0;
+      int endSecondsX = cos(((seconds - secondDividedTwo) * fullCircle) - roundAngle) * 85.0 + 120.0;
+      int endSecondsY = sin(((seconds - secondDividedTwo)  * fullCircle) - roundAngle) * 85.0 + 120.0;
+      int endSeconds1X = cos(((seconds + secondDividedTwo)  * fullCircle) - roundAngle) * 85.0 + 120.0;
+      int endSeconds1Y = sin(((seconds + secondDividedTwo)  * fullCircle) - roundAngle) * 85.0 + 120.0;
+      int minutesX = cos((minutes * fullCircle) - roundAngle) * 60.0 + 120.0;
+      int minutesY = sin((minutes * fullCircle) - roundAngle) * 60.0 + 120.0;
+      int hourX = cos((hours * fullCircle) - roundAngle) * 30 + 120;
+      int hourY = sin((hours * fullCircle) - roundAngle) * 30 + 120;
+      it.image(0, 0, id(display_image));
+      it.strftime(75, 85, id(roboto), id(text_icons_gray), "%Y-%m-%d", time);
+      it.strftime(95, 165, id(roboto), id(text_icons_gray), "%H:%M", time);
+      it.line(startSecondsX, startSecondsY, endSecondsX, endSecondsY, id(black_gray));
+      it.line(startSecondsX, startSecondsY, endSeconds1X, endSeconds1Y, id(black_gray));
+      it.line(endSeconds1X, endSeconds1Y, endSecondsX, endSecondsY, id(black_gray));
+      it.line(120, 120, minutesX, minutesY, id(gray));
+      it.line(120, 120, hourX, hourY, id(gray_blue));
+      
+      it.line(startTempX, startTempY, endTempX, endTempY, id(black_gray));
+      it.line(startTempX, startTempY, endTemp1X, endTemp1Y, id(black_gray));
+      it.line(endTemp1X, endTemp1Y, endTempX, endTempY, id(black_gray));
